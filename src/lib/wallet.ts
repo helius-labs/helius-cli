@@ -30,6 +30,19 @@ export async function loadKeypair(keypairPath: string): Promise<WalletKeypair> {
   return { publicKey, secretKey };
 }
 
+export function loadKeypairFromBase64(base64Key: string): WalletKeypair {
+  const secretKey = Uint8Array.from(Buffer.from(base64Key, "base64"));
+
+  if (secretKey.length !== 64) {
+    throw new Error(
+      `Invalid base64 key length. Expected 64 bytes, got ${secretKey.length}.`
+    );
+  }
+
+  const publicKey = secretKey.slice(32);
+  return { publicKey, secretKey };
+}
+
 export async function getAddress(keypair: WalletKeypair): Promise<string> {
   const signer = await createKeyPairSignerFromBytes(keypair.secretKey);
   return signer.address;
