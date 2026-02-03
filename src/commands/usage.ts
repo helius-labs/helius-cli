@@ -2,13 +2,18 @@ import chalk from "chalk";
 import ora from "ora";
 import { getProject, listProjects } from "../lib/api.js";
 import { getJwt } from "../lib/config.js";
+import { outputJson, type OutputOptions } from "../lib/output.js";
 
-export async function usageCommand(projectId?: string): Promise<void> {
-  const spinner = ora();
+export async function usageCommand(projectId?: string, options: OutputOptions = {}): Promise<void> {
+  const spinner = options.json ? null : ora();
 
   try {
     const jwt = getJwt();
     if (!jwt) {
+      if (options.json) {
+        outputJson({ error: "NOT_LOGGED_IN", message: "Not logged in" });
+        process.exit(1);
+      }
       console.log(
         chalk.red("Not logged in. Run `helius login` to authenticate, or `helius signup` to create a new account.")
       );
@@ -18,17 +23,29 @@ export async function usageCommand(projectId?: string): Promise<void> {
     // If no project ID provided, try to get the only project
     let id = projectId;
     if (!id) {
-      spinner.start("Fetching projects...");
+      spinner?.start("Fetching projects...");
       const projects = await listProjects(jwt);
-      spinner.stop();
+      spinner?.stop();
 
       if (projects.length === 0) {
+        if (options.json) {
+          outputJson({ error: "NO_PROJECTS", message: "No projects found" });
+          process.exit(1);
+        }
         console.log(chalk.yellow("No projects found."));
         console.log(chalk.gray("Run `helius signup` to create your first project."));
         process.exit(1);
       }
 
       if (projects.length > 1) {
+        if (options.json) {
+          outputJson({
+            error: "MULTIPLE_PROJECTS",
+            message: "Multiple projects found, specify project ID",
+            projects: projects.map(p => ({ id: p.id, name: p.name })),
+          });
+          process.exit(1);
+        }
         console.log(
           chalk.yellow(
             "Multiple projects found. Please specify a project ID."
@@ -44,9 +61,18 @@ export async function usageCommand(projectId?: string): Promise<void> {
       id = projects[0].id;
     }
 
-    spinner.start("Fetching usage data...");
+    spinner?.start("Fetching usage data...");
     const project = await getProject(jwt, id);
-    spinner.stop();
+    spinner?.stop();
+
+    if (options.json) {
+      outputJson({
+        projectId: id,
+        creditsUsage: project.creditsUsage || null,
+        billingCycle: project.billingCycle || null,
+      });
+      return;
+    }
 
     console.log(chalk.bold(`\nCredits Usage for project ${chalk.cyan(id)}:\n`));
 
@@ -89,7 +115,7 @@ export async function usageCommand(projectId?: string): Promise<void> {
       console.log(`  ${project.billingCycle.start} to ${project.billingCycle.end}`);
     }
   } catch (error) {
-    spinner.fail(
+    spinner?.fail(
       `Error: ${error instanceof Error ? error.message : String(error)}`
     );
     process.exit(1);

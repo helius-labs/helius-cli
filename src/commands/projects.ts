@@ -2,22 +2,39 @@ import chalk from "chalk";
 import ora from "ora";
 import { listProjects } from "../lib/api.js";
 import { getJwt } from "../lib/config.js";
+import { outputJson, type OutputOptions } from "../lib/output.js";
 
-export async function projectsCommand(): Promise<void> {
-  const spinner = ora();
+export async function projectsCommand(options: OutputOptions): Promise<void> {
+  const spinner = options.json ? null : ora();
 
   try {
     const jwt = getJwt();
     if (!jwt) {
+      if (options.json) {
+        outputJson({ error: "NOT_LOGGED_IN", message: "Not logged in" });
+        process.exit(1);
+      }
       console.log(
         chalk.red("Not logged in. Run `helius login` to authenticate, or `helius signup` to create a new account.")
       );
       process.exit(1);
     }
 
-    spinner.start("Fetching projects...");
+    spinner?.start("Fetching projects...");
     const projects = await listProjects(jwt);
-    spinner.stop();
+    spinner?.stop();
+
+    if (options.json) {
+      outputJson({
+        projects: projects.map(p => ({
+          id: p.id,
+          name: p.name,
+          plan: p.subscription?.plan || null,
+          createdAt: p.createdAt,
+        })),
+      });
+      return;
+    }
 
     if (projects.length === 0) {
       console.log(chalk.yellow("No projects found."));
@@ -57,7 +74,7 @@ export async function projectsCommand(): Promise<void> {
     console.log(chalk.gray(`\nRun \`helius apikeys ${firstProjectId}\` to view API keys`));
     console.log(chalk.gray(`Run \`helius rpc ${firstProjectId}\` to view RPC endpoints`));
   } catch (error) {
-    spinner.fail(
+    spinner?.fail(
       `Error: ${error instanceof Error ? error.message : String(error)}`
     );
     process.exit(1);

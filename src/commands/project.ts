@@ -2,13 +2,18 @@ import chalk from "chalk";
 import ora from "ora";
 import { getProject, listProjects } from "../lib/api.js";
 import { getJwt } from "../lib/config.js";
+import { outputJson, type OutputOptions } from "../lib/output.js";
 
-export async function projectCommand(projectId?: string): Promise<void> {
-  const spinner = ora();
+export async function projectCommand(projectId?: string, options: OutputOptions = {}): Promise<void> {
+  const spinner = options.json ? null : ora();
 
   try {
     const jwt = getJwt();
     if (!jwt) {
+      if (options.json) {
+        outputJson({ error: "NOT_LOGGED_IN", message: "Not logged in" });
+        process.exit(1);
+      }
       console.log(
         chalk.red("Not logged in. Run `helius login` to authenticate, or `helius signup` to create a new account.")
       );
@@ -19,17 +24,29 @@ export async function projectCommand(projectId?: string): Promise<void> {
     let id = projectId;
     let projectListItem;
     if (!id) {
-      spinner.start("Fetching projects...");
+      spinner?.start("Fetching projects...");
       const projects = await listProjects(jwt);
-      spinner.stop();
+      spinner?.stop();
 
       if (projects.length === 0) {
+        if (options.json) {
+          outputJson({ error: "NO_PROJECTS", message: "No projects found" });
+          process.exit(1);
+        }
         console.log(chalk.yellow("No projects found."));
         console.log(chalk.gray("Run `helius signup` to create your first project."));
         process.exit(1);
       }
 
       if (projects.length > 1) {
+        if (options.json) {
+          outputJson({
+            error: "MULTIPLE_PROJECTS",
+            message: "Multiple projects found, specify project ID",
+            projects: projects.map(p => ({ id: p.id, name: p.name })),
+          });
+          process.exit(1);
+        }
         console.log(
           chalk.yellow(
             "Multiple projects found. Please specify a project ID."
@@ -46,15 +63,51 @@ export async function projectCommand(projectId?: string): Promise<void> {
       projectListItem = projects[0];
     } else {
       // Get list item for metadata
-      spinner.start("Fetching projects...");
+      spinner?.start("Fetching projects...");
       const projects = await listProjects(jwt);
       projectListItem = projects.find(p => p.id === id);
-      spinner.stop();
+      spinner?.stop();
     }
 
-    spinner.start("Fetching project details...");
+    spinner?.start("Fetching project details...");
     const projectDetails = await getProject(jwt, id);
-    spinner.stop();
+    spinner?.stop();
+
+    if (options.json) {
+      // Build RPC endpoints
+      const rpcRecords = projectListItem?.dnsRecords?.filter(r => r.usageType === "rpc") || [];
+      const endpoints: Record<string, string> = {};
+
+      if (rpcRecords.length === 0 && projectDetails.apiKeys && projectDetails.apiKeys.length > 0) {
+        const apiKey = projectDetails.apiKeys[0].keyId;
+        endpoints.mainnet = `https://mainnet.helius-rpc.com/?api-key=${apiKey}`;
+        endpoints.devnet = `https://devnet.helius-rpc.com/?api-key=${apiKey}`;
+      } else {
+        for (const record of rpcRecords) {
+          endpoints[record.network] = "https://" + record.dns;
+        }
+      }
+
+      outputJson({
+        id,
+        name: projectListItem?.name || null,
+        createdAt: projectListItem?.createdAt || null,
+        subscription: projectListItem?.subscription ? {
+          plan: projectListItem.subscription.plan,
+          billingPeriodStart: projectListItem.subscription.billingPeriodStart,
+          billingPeriodEnd: projectListItem.subscription.billingPeriodEnd,
+        } : null,
+        apiKeys: (projectDetails.apiKeys || []).map(k => ({
+          keyId: k.keyId,
+          keyName: k.keyName,
+          usagePlan: k.usagePlan,
+        })),
+        creditsUsage: projectDetails.creditsUsage || null,
+        billingCycle: projectDetails.billingCycle || null,
+        endpoints,
+      });
+      return;
+    }
 
     console.log(chalk.bold("\nProject Details:\n"));
     console.log(`${chalk.gray("ID:")}          ${chalk.cyan(id)}`);
@@ -103,7 +156,7 @@ export async function projectCommand(projectId?: string): Promise<void> {
       }
     }
   } catch (error) {
-    spinner.fail(
+    spinner?.fail(
       `Error: ${error instanceof Error ? error.message : String(error)}`
     );
     process.exit(1);

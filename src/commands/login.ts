@@ -4,43 +4,60 @@ import { loadKeypair, signAuthMessage, getAddress } from "../lib/wallet.js";
 import { signup } from "../lib/api.js";
 import { setJwt } from "../lib/config.js";
 import { keypairExists } from "./keygen.js";
+import { outputJson, type OutputOptions } from "../lib/output.js";
 
-interface LoginOptions {
+interface LoginOptions extends OutputOptions {
   keypair: string;
 }
 
 export async function loginCommand(options: LoginOptions): Promise<void> {
-  const spinner = ora();
+  const spinner = options.json ? null : ora();
 
   try {
     // Check keypair exists
     if (!keypairExists(options.keypair)) {
+      if (options.json) {
+        outputJson({ error: "KEYPAIR_NOT_FOUND", message: `Keypair not found at ${options.keypair}` });
+        process.exit(1);
+      }
       console.error(chalk.red(`Error: Keypair not found at ${options.keypair}`));
       console.error(chalk.gray("Run `helius keygen` to generate a keypair first."));
       process.exit(1);
     }
 
     // Load keypair
-    spinner.start("Loading keypair...");
+    spinner?.start("Loading keypair...");
     const keypair = await loadKeypair(options.keypair);
     const walletAddress = await getAddress(keypair);
-    spinner.succeed(`Wallet: ${chalk.cyan(walletAddress)}`);
+    spinner?.succeed(`Wallet: ${chalk.cyan(walletAddress)}`);
 
     // Sign auth message
-    spinner.start("Signing authentication message...");
+    spinner?.start("Signing authentication message...");
     const { message, signature } = signAuthMessage(keypair.secretKey);
-    spinner.succeed("Message signed");
+    spinner?.succeed("Message signed");
 
     // Call login API
-    spinner.start("Authenticating...");
+    spinner?.start("Authenticating...");
     const authResult = await signup(message, signature, walletAddress);
     setJwt(authResult.token);
-    spinner.succeed("Authenticated");
+    spinner?.succeed("Authenticated");
+
+    if (options.json) {
+      outputJson({
+        wallet: walletAddress,
+        authenticated: true,
+      });
+      return;
+    }
 
     console.log("\n" + chalk.green("✓ Login successful!"));
     console.log(`\nJWT saved to ~/.helius-cli/config.json`);
   } catch (error) {
-    spinner.fail(
+    if (options.json) {
+      outputJson({ error: "AUTH_FAILED", message: error instanceof Error ? error.message : String(error) });
+      process.exit(1);
+    }
+    spinner?.fail(
       `Error: ${error instanceof Error ? error.message : String(error)}`
     );
     process.exit(1);

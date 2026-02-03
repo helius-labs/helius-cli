@@ -28,32 +28,38 @@ program
   .command("signup")
   .description("Pay 1 USDC + create account + project")
   .option("-k, --keypair <path>", "Path to Solana keypair file", getDefaultKeypairPath())
+  .option("--json", "Output in JSON format")
   .action(signupCommand);
 
 program
   .command("login")
   .description("Authenticate with wallet")
   .option("-k, --keypair <path>", "Path to Solana keypair file", getDefaultKeypairPath())
+  .option("--json", "Output in JSON format")
   .action(loginCommand);
 
 program
   .command("projects")
   .description("List all projects")
+  .option("--json", "Output in JSON format")
   .action(projectsCommand);
 
 program
   .command("project [id]")
   .description("Get project details")
+  .option("--json", "Output in JSON format")
   .action(projectCommand);
 
 // API Keys command with subcommands
 const apikeysCmd = program
   .command("apikeys [project-id]")
-  .description("List all API keys for project (or use 'apikeys create')");
+  .description("List all API keys for project (or use 'apikeys create')")
+  .option("--json", "Output in JSON format");
 
 apikeysCmd
   .command("create [project-id]")
   .description("Create new API key for project")
+  .option("--json", "Output in JSON format")
   .action(createApiKeyCommand);
 
 // Default action for 'apikeys' (list)
@@ -62,11 +68,13 @@ apikeysCmd.action(apikeysCommand);
 program
   .command("usage [project-id]")
   .description("Show credits usage for project")
+  .option("--json", "Output in JSON format")
   .action(usageCommand);
 
 program
   .command("rpc [project-id]")
   .description("Show RPC endpoints for project")
+  .option("--json", "Output in JSON format")
   .action(rpcCommand);
 
 program.parse();
