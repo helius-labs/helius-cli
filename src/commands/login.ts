@@ -4,7 +4,7 @@ import { loadKeypair, signAuthMessage, getAddress } from "../lib/wallet.js";
 import { signup } from "../lib/api.js";
 import { setJwt } from "../lib/config.js";
 import { keypairExists } from "./keygen.js";
-import { outputJson, type OutputOptions } from "../lib/output.js";
+import { outputJson, exitWithError, ExitCode, type OutputOptions } from "../lib/output.js";
 
 interface LoginOptions extends OutputOptions {
   keypair: string;
@@ -17,12 +17,11 @@ export async function loginCommand(options: LoginOptions): Promise<void> {
     // Check keypair exists
     if (!keypairExists(options.keypair)) {
       if (options.json) {
-        outputJson({ error: "KEYPAIR_NOT_FOUND", message: `Keypair not found at ${options.keypair}` });
-        process.exit(1);
+        exitWithError("KEYPAIR_NOT_FOUND", `Keypair not found at ${options.keypair}`, undefined, true);
       }
       console.error(chalk.red(`Error: Keypair not found at ${options.keypair}`));
       console.error(chalk.gray("Run `helius keygen` to generate a keypair first."));
-      process.exit(1);
+      process.exit(ExitCode.KEYPAIR_NOT_FOUND);
     }
 
     // Load keypair
@@ -54,12 +53,11 @@ export async function loginCommand(options: LoginOptions): Promise<void> {
     console.log(`\nJWT saved to ~/.helius-cli/config.json`);
   } catch (error) {
     if (options.json) {
-      outputJson({ error: "AUTH_FAILED", message: error instanceof Error ? error.message : String(error) });
-      process.exit(1);
+      exitWithError("AUTH_FAILED", error instanceof Error ? error.message : String(error), undefined, true);
     }
     spinner?.fail(
       `Error: ${error instanceof Error ? error.message : String(error)}`
     );
-    process.exit(1);
+    process.exit(ExitCode.AUTH_FAILED);
   }
 }

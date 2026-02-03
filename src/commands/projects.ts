@@ -2,7 +2,7 @@ import chalk from "chalk";
 import ora from "ora";
 import { listProjects } from "../lib/api.js";
 import { getJwt } from "../lib/config.js";
-import { outputJson, type OutputOptions } from "../lib/output.js";
+import { outputJson, exitWithError, ExitCode, type OutputOptions } from "../lib/output.js";
 
 export async function projectsCommand(options: OutputOptions): Promise<void> {
   const spinner = options.json ? null : ora();
@@ -11,13 +11,12 @@ export async function projectsCommand(options: OutputOptions): Promise<void> {
     const jwt = getJwt();
     if (!jwt) {
       if (options.json) {
-        outputJson({ error: "NOT_LOGGED_IN", message: "Not logged in" });
-        process.exit(1);
+        exitWithError("NOT_LOGGED_IN", "Not logged in", undefined, true);
       }
       console.log(
         chalk.red("Not logged in. Run `helius login` to authenticate, or `helius signup` to create a new account.")
       );
-      process.exit(1);
+      process.exit(ExitCode.NOT_LOGGED_IN);
     }
 
     spinner?.start("Fetching projects...");
@@ -74,9 +73,12 @@ export async function projectsCommand(options: OutputOptions): Promise<void> {
     console.log(chalk.gray(`\nRun \`helius apikeys ${firstProjectId}\` to view API keys`));
     console.log(chalk.gray(`Run \`helius rpc ${firstProjectId}\` to view RPC endpoints`));
   } catch (error) {
+    if (options.json) {
+      exitWithError("API_ERROR", error instanceof Error ? error.message : String(error), undefined, true);
+    }
     spinner?.fail(
       `Error: ${error instanceof Error ? error.message : String(error)}`
     );
-    process.exit(1);
+    process.exit(ExitCode.API_ERROR);
   }
 }

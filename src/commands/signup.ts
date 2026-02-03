@@ -6,7 +6,7 @@ import { payUSDC, checkUsdcBalance, checkSolBalance, MIN_SOL_FOR_TX } from "../l
 import { setJwt } from "../lib/config.js";
 import { PAYMENT_AMOUNT } from "../constants.js";
 import { keypairExists } from "./keygen.js";
-import { outputJson, type OutputOptions } from "../lib/output.js";
+import { outputJson, exitWithError, ExitCode, type OutputOptions } from "../lib/output.js";
 
 interface SignupOptions extends OutputOptions {
   keypair: string;
@@ -42,12 +42,11 @@ export async function signupCommand(options: SignupOptions): Promise<void> {
     // Check keypair exists
     if (!keypairExists(options.keypair)) {
       if (options.json) {
-        outputJson({ error: "KEYPAIR_NOT_FOUND", message: `Keypair not found at ${options.keypair}` });
-        process.exit(1);
+        exitWithError("KEYPAIR_NOT_FOUND", `Keypair not found at ${options.keypair}`, undefined, true);
       }
       console.error(chalk.red(`Error: Keypair not found at ${options.keypair}`));
       console.error(chalk.gray("Run `helius keygen` to generate a keypair first."));
-      process.exit(1);
+      process.exit(ExitCode.KEYPAIR_NOT_FOUND);
     }
 
     // 1. Load keypair
@@ -113,20 +112,17 @@ export async function signupCommand(options: SignupOptions): Promise<void> {
     const solBalance = await checkSolBalance(keypair);
     if (solBalance < MIN_SOL_FOR_TX) {
       if (options.json) {
-        outputJson({
-          error: "INSUFFICIENT_SOL",
-          message: "Insufficient SOL for transaction fees",
+        exitWithError("INSUFFICIENT_SOL", "Insufficient SOL for transaction fees", {
           have: Number(solBalance) / 1_000_000_000,
           need: 0.001,
           fundAddress: walletAddress,
-        });
-        process.exit(1);
+        }, true);
       }
       spinner?.fail(`Insufficient SOL for transaction fees`);
       console.error(chalk.red(`Have: ${(Number(solBalance) / 1_000_000_000).toFixed(6)} SOL`));
       console.error(chalk.red(`Need: ~0.001 SOL`));
       console.error(chalk.gray(`\nSend SOL to: ${walletAddress}`));
-      process.exit(1);
+      process.exit(ExitCode.INSUFFICIENT_SOL);
     }
     spinner?.succeed(`SOL balance: ${chalk.green((Number(solBalance) / 1_000_000_000).toFixed(4))} SOL`);
 
@@ -135,20 +131,17 @@ export async function signupCommand(options: SignupOptions): Promise<void> {
     const usdcBalance = await checkUsdcBalance(keypair);
     if (usdcBalance < PAYMENT_AMOUNT) {
       if (options.json) {
-        outputJson({
-          error: "INSUFFICIENT_USDC",
-          message: "Insufficient USDC",
+        exitWithError("INSUFFICIENT_USDC", "Insufficient USDC", {
           have: Number(usdcBalance) / 1_000_000,
           need: 1,
           fundAddress: walletAddress,
-        });
-        process.exit(1);
+        }, true);
       }
       spinner?.fail(`Insufficient USDC`);
       console.error(chalk.red(`Have: ${(Number(usdcBalance) / 1_000_000).toFixed(2)} USDC`));
       console.error(chalk.red(`Need: 1 USDC`));
       console.error(chalk.gray(`\nSend USDC to: ${walletAddress}`));
-      process.exit(1);
+      process.exit(ExitCode.INSUFFICIENT_USDC);
     }
     spinner?.succeed(`USDC balance: ${chalk.green((Number(usdcBalance) / 1_000_000).toFixed(2))} USDC`);
 
@@ -203,12 +196,11 @@ export async function signupCommand(options: SignupOptions): Promise<void> {
     );
   } catch (error) {
     if (options.json) {
-      outputJson({ error: "SIGNUP_FAILED", message: error instanceof Error ? error.message : String(error) });
-      process.exit(1);
+      exitWithError("SIGNUP_FAILED", error instanceof Error ? error.message : String(error), undefined, true);
     }
     spinner?.fail(
       `Error: ${error instanceof Error ? error.message : String(error)}`
     );
-    process.exit(1);
+    process.exit(ExitCode.GENERAL_ERROR);
   }
 }

@@ -2,7 +2,7 @@ import chalk from "chalk";
 import ora from "ora";
 import { getProject, listProjects } from "../lib/api.js";
 import { getJwt } from "../lib/config.js";
-import { outputJson, type OutputOptions } from "../lib/output.js";
+import { outputJson, exitWithError, ExitCode, type OutputOptions } from "../lib/output.js";
 
 export async function usageCommand(projectId?: string, options: OutputOptions = {}): Promise<void> {
   const spinner = options.json ? null : ora();
@@ -11,13 +11,12 @@ export async function usageCommand(projectId?: string, options: OutputOptions = 
     const jwt = getJwt();
     if (!jwt) {
       if (options.json) {
-        outputJson({ error: "NOT_LOGGED_IN", message: "Not logged in" });
-        process.exit(1);
+        exitWithError("NOT_LOGGED_IN", "Not logged in", undefined, true);
       }
       console.log(
         chalk.red("Not logged in. Run `helius login` to authenticate, or `helius signup` to create a new account.")
       );
-      process.exit(1);
+      process.exit(ExitCode.NOT_LOGGED_IN);
     }
 
     // If no project ID provided, try to get the only project
@@ -29,22 +28,18 @@ export async function usageCommand(projectId?: string, options: OutputOptions = 
 
       if (projects.length === 0) {
         if (options.json) {
-          outputJson({ error: "NO_PROJECTS", message: "No projects found" });
-          process.exit(1);
+          exitWithError("NO_PROJECTS", "No projects found", undefined, true);
         }
         console.log(chalk.yellow("No projects found."));
         console.log(chalk.gray("Run `helius signup` to create your first project."));
-        process.exit(1);
+        process.exit(ExitCode.NO_PROJECTS);
       }
 
       if (projects.length > 1) {
         if (options.json) {
-          outputJson({
-            error: "MULTIPLE_PROJECTS",
-            message: "Multiple projects found, specify project ID",
+          exitWithError("MULTIPLE_PROJECTS", "Multiple projects found, specify project ID", {
             projects: projects.map(p => ({ id: p.id, name: p.name })),
-          });
-          process.exit(1);
+          }, true);
         }
         console.log(
           chalk.yellow(
@@ -55,7 +50,7 @@ export async function usageCommand(projectId?: string, options: OutputOptions = 
         for (const p of projects) {
           console.log(`  ${chalk.cyan(p.id)} - ${p.name || "Unnamed"}`);
         }
-        process.exit(1);
+        process.exit(ExitCode.MULTIPLE_PROJECTS);
       }
 
       id = projects[0].id;
@@ -115,9 +110,12 @@ export async function usageCommand(projectId?: string, options: OutputOptions = 
       console.log(`  ${project.billingCycle.start} to ${project.billingCycle.end}`);
     }
   } catch (error) {
+    if (options.json) {
+      exitWithError("API_ERROR", error instanceof Error ? error.message : String(error), undefined, true);
+    }
     spinner?.fail(
       `Error: ${error instanceof Error ? error.message : String(error)}`
     );
-    process.exit(1);
+    process.exit(ExitCode.API_ERROR);
   }
 }
