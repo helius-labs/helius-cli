@@ -42,6 +42,10 @@ export async function keygenCommand(options: KeygenOptions): Promise<void> {
   console.log(chalk.green("✓ Keypair generated"));
   console.log(`Path: ${chalk.cyan(resolvedPath)}`);
   console.log(`Address: ${chalk.cyan(signer.address)}`);
+  console.log("");
+  console.log(chalk.yellow("To use this wallet, fund it with:"));
+  console.log(`  • ${chalk.cyan("~0.001 SOL")} for transaction fees`);
+  console.log(`  • ${chalk.cyan("1 USDC")} for Helius signup`);
 }
 
 export function getDefaultKeypairPath(): string {

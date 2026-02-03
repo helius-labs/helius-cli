@@ -10,7 +10,7 @@ export async function projectCommand(projectId?: string): Promise<void> {
     const jwt = getJwt();
     if (!jwt) {
       console.log(
-        chalk.red("Not logged in. Run `helius signup -k <keypair>` to create an account, or `helius login` if you already have one.")
+        chalk.red("Not logged in. Run `helius login` to authenticate, or `helius signup` to create a new account.")
       );
       process.exit(1);
     }
@@ -25,7 +25,7 @@ export async function projectCommand(projectId?: string): Promise<void> {
 
       if (projects.length === 0) {
         console.log(chalk.yellow("No projects found."));
-        console.log(chalk.gray("Run `helius signup -k <keypair>` to create your first project."));
+        console.log(chalk.gray("Run `helius signup` to create your first project."));
         process.exit(1);
       }
 

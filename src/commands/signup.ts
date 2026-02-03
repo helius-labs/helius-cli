@@ -1,14 +1,37 @@
 import chalk from "chalk";
 import ora from "ora";
 import { loadKeypair, signAuthMessage, getAddress } from "../lib/wallet.js";
-import { signup, createProject, listProjects } from "../lib/api.js";
-import { payUSDC, checkUsdcBalance } from "../lib/payment.js";
+import { signup, createProject, listProjects, type Project } from "../lib/api.js";
+import { payUSDC, checkUsdcBalance, checkSolBalance, MIN_SOL_FOR_TX } from "../lib/payment.js";
 import { setJwt } from "../lib/config.js";
 import { PAYMENT_AMOUNT } from "../constants.js";
 import { keypairExists } from "./keygen.js";
 
 interface SignupOptions {
   keypair: string;
+}
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+async function createProjectWithRetry(
+  jwt: string,
+  maxRetries = 3,
+  delayMs = 2000
+): Promise<Project> {
+  let lastError: Error | null = null;
+  
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      return await createProject(jwt);
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+      if (i < maxRetries - 1) {
+        await sleep(delayMs);
+      }
+    }
+  }
+  
+  throw lastError;
 }
 
 export async function signupCommand(options: SignupOptions): Promise<void> {
@@ -58,22 +81,37 @@ export async function signupCommand(options: SignupOptions): Promise<void> {
 
     spinner.succeed("No existing projects");
 
-    // 4. Only now check balance and pay
-    spinner.start("Checking USDC balance...");
-    const balance = await checkUsdcBalance(keypair);
-    if (balance < PAYMENT_AMOUNT) {
-      spinner.fail(`Insufficient USDC. Have: ${balance / 1_000_000n}, Need: 1 USDC`);
+    // 4. Check SOL balance for transaction fees
+    spinner.start("Checking SOL balance...");
+    const solBalance = await checkSolBalance(keypair);
+    if (solBalance < MIN_SOL_FOR_TX) {
+      spinner.fail(`Insufficient SOL for transaction fees`);
+      console.error(chalk.red(`Have: ${(Number(solBalance) / 1_000_000_000).toFixed(6)} SOL`));
+      console.error(chalk.red(`Need: ~0.001 SOL`));
+      console.error(chalk.gray(`\nSend SOL to: ${await getAddress(keypair)}`));
       process.exit(1);
     }
-    spinner.succeed(`USDC balance: ${chalk.green((Number(balance) / 1_000_000).toFixed(2))} USDC`);
+    spinner.succeed(`SOL balance: ${chalk.green((Number(solBalance) / 1_000_000_000).toFixed(4))} SOL`);
+
+    // 5. Check USDC balance
+    spinner.start("Checking USDC balance...");
+    const usdcBalance = await checkUsdcBalance(keypair);
+    if (usdcBalance < PAYMENT_AMOUNT) {
+      spinner.fail(`Insufficient USDC`);
+      console.error(chalk.red(`Have: ${(Number(usdcBalance) / 1_000_000).toFixed(2)} USDC`));
+      console.error(chalk.red(`Need: 1 USDC`));
+      console.error(chalk.gray(`\nSend USDC to: ${await getAddress(keypair)}`));
+      process.exit(1);
+    }
+    spinner.succeed(`USDC balance: ${chalk.green((Number(usdcBalance) / 1_000_000).toFixed(2))} USDC`);
 
     spinner.start("Sending 1 USDC payment...");
     const txSignature = await payUSDC(keypair);
     spinner.succeed(`Payment sent: ${chalk.cyan(txSignature)}`);
 
-    // 5. Create project
+    // 6. Create project (with retry - backend needs time to verify payment)
     spinner.start("Creating project...");
-    const project = await createProject(authResult.token);
+    const project = await createProjectWithRetry(authResult.token, 3, 2000);
     spinner.succeed("Project created");
 
     console.log("\n" + chalk.green("✓ Signup complete!"));

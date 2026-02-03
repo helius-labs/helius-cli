@@ -11,7 +11,7 @@ async function resolveProjectId(jwt: string, projectId?: string): Promise<string
   const projects = await listProjects(jwt);
 
   if (projects.length === 0) {
-    throw new Error("No projects found. Run `helius signup -k <keypair>` to create your first project.");
+    throw new Error("No projects found. Run `helius signup` to create your first project.");
   }
 
   if (projects.length > 1) {
@@ -35,7 +35,7 @@ export async function apikeysCommand(projectId?: string): Promise<void> {
     const jwt = getJwt();
     if (!jwt) {
       console.log(
-        chalk.red("Not logged in. Run `helius signup -k <keypair>` to create an account, or `helius login` if you already have one.")
+        chalk.red("Not logged in. Run `helius login` to authenticate, or `helius signup` to create a new account.")
       );
       process.exit(1);
     }
@@ -87,7 +87,7 @@ export async function createApiKeyCommand(projectId?: string): Promise<void> {
     const jwt = getJwt();
     if (!jwt) {
       console.log(
-        chalk.red("Not logged in. Run `helius signup -k <keypair>` to create an account, or `helius login` if you already have one.")
+        chalk.red("Not logged in. Run `helius login` to authenticate, or `helius signup` to create a new account.")
       );
       process.exit(1);
     }

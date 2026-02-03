@@ -106,3 +106,21 @@ export async function checkUsdcBalance(
     return 0n;
   }
 }
+
+export async function checkSolBalance(
+  keypair: WalletKeypair
+): Promise<bigint> {
+  const rpc = createSolanaRpc(RPC_URL);
+  const signer = await createKeyPairSignerFromBytes(keypair.secretKey);
+
+  try {
+    const response = await rpc.getBalance(signer.address).send();
+    return response.value;
+  } catch {
+    return 0n;
+  }
+}
+
+// Minimum SOL needed for transaction fees
+// Note: If receiver ATA doesn't exist, ~0.002 SOL extra needed for rent
+export const MIN_SOL_FOR_TX = 1_000_000n; // 0.001 SOL
