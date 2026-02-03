@@ -54,10 +54,9 @@ export async function apikeysCommand(projectId?: string): Promise<void> {
     console.log(
       chalk.gray("Key ID".padEnd(40)) +
       chalk.gray("Name".padEnd(20)) +
-      chalk.gray("Plan".padEnd(10)) +
       chalk.gray("Created")
     );
-    console.log(chalk.gray("-".repeat(90)));
+    console.log(chalk.gray("-".repeat(70)));
 
     for (const key of project.apiKeys) {
       const createdAt = key.createdAt
@@ -66,7 +65,6 @@ export async function apikeysCommand(projectId?: string): Promise<void> {
       console.log(
         chalk.cyan(key.keyId.padEnd(40)) +
         (key.keyName || "Unnamed").padEnd(20) +
-        (key.usagePlan || "N/A").padEnd(10) +
         createdAt
       );
     }
@@ -128,7 +126,6 @@ export async function createApiKeyCommand(projectId?: string): Promise<void> {
     if (apiKey.keyName) {
       console.log(`Name:   ${apiKey.keyName}`);
     }
-    console.log(`Plan:   ${apiKey.usagePlan || "N/A"}`);
   } catch (error) {
     spinner.fail(
       `Error: ${error instanceof Error ? error.message : String(error)}`
