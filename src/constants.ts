@@ -1,6 +1,11 @@
 import type { Address } from "@solana/kit";
 
+export const VERSION = "1.0.0";
+
 export const API_URL = "https://dev-api.helius.xyz/v0";
+
+// User agent for API requests
+export const CLI_USER_AGENT = `helius-cli/${VERSION}`;
 
 // Treasury wallet that receives the 1 USDC payment
 export const TREASURY = "CEs84tEowsXpH8u4VBf8rJSVgSRypFMfXw9CpGRtQgb6" as Address;

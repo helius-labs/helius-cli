@@ -8,13 +8,14 @@ import { apikeysCommand, createApiKeyCommand } from "../src/commands/apikeys.js"
 import { usageCommand } from "../src/commands/usage.js";
 import { rpcCommand } from "../src/commands/rpc.js";
 import { keygenCommand, getDefaultKeypairPath } from "../src/commands/keygen.js";
+import { VERSION } from "../src/constants.js";
 
 const program = new Command();
 
 program
   .name("helius")
   .description("CLI to create free Helius accounts and manage projects")
-  .version("1.0.0");
+  .version(VERSION);
 
 program
   .command("keygen")

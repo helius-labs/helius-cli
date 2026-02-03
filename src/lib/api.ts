@@ -1,4 +1,4 @@
-import { API_URL } from "../constants.js";
+import { API_URL, CLI_USER_AGENT } from "../constants.js";
 
 interface SignupResponse {
   token: string;
@@ -103,6 +103,7 @@ async function request<T>(
     ...options,
     headers: {
       "Content-Type": "application/json",
+      "User-Agent": CLI_USER_AGENT,
       ...options.headers,
     },
   });
