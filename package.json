@@ -1,5 +1,5 @@
 {
-  "name": "helius",
+  "name": "helius-cli",
   "version": "1.0.0",
   "description": "CLI to create free Helius accounts and manage projects",
   "type": "module",

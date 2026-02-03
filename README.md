@@ -24,10 +24,10 @@ helius apikeys <project-id>
 
 ```bash
 # Install globally via npm
-npm install -g helius
+npm install -g helius-cli
 
 # Or with pnpm
-pnpm add -g helius
+pnpm add -g helius-cli
 ```
 
 ## Commands
