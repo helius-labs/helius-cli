@@ -1,6 +1,6 @@
 import chalk from "chalk";
 import ora from "ora";
-import { loadKeypair, loadKeypairFromBase64, signAuthMessage, getAddress } from "../lib/wallet.js";
+import { loadKeypair, signAuthMessage, getAddress } from "../lib/wallet.js";
 import { signup, createProject, listProjects, getProject, type Project } from "../lib/api.js";
 import { payUSDC, checkUsdcBalance, checkSolBalance, MIN_SOL_FOR_TX } from "../lib/payment.js";
 import { setJwt } from "../lib/config.js";
@@ -10,7 +10,6 @@ import { outputJson, exitWithError, ExitCode, type OutputOptions } from "../lib/
 
 interface SignupOptions extends OutputOptions {
   keypair: string;
-  privateKey?: string;
 }
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -40,36 +39,19 @@ export async function signupCommand(options: SignupOptions): Promise<void> {
   const spinner = options.json ? null : ora();
 
   try {
-    // Check for base64 private key (flag takes priority, then env var, then file)
-    const base64Key = options.privateKey || process.env.HELIUS_PRIVATE_KEY;
+    // Check keypair exists
+    if (!keypairExists(options.keypair)) {
+      if (options.json) {
+        exitWithError("KEYPAIR_NOT_FOUND", `Keypair not found at ${options.keypair}`, undefined, true);
+      }
+      console.error(chalk.red(`Error: Keypair not found at ${options.keypair}`));
+      console.error(chalk.gray("Run `helius keygen` to generate a keypair first."));
+      process.exit(ExitCode.KEYPAIR_NOT_FOUND);
+    }
 
     // 1. Load keypair
     spinner?.start("Loading keypair...");
-    let keypair;
-
-    if (base64Key) {
-      try {
-        keypair = loadKeypairFromBase64(base64Key);
-      } catch (err) {
-        if (options.json) {
-          exitWithError("KEYPAIR_NOT_FOUND", err instanceof Error ? err.message : "Invalid base64 key", undefined, true);
-        }
-        spinner?.fail(err instanceof Error ? err.message : "Invalid base64 key");
-        process.exit(ExitCode.KEYPAIR_NOT_FOUND);
-      }
-    } else {
-      // Fall back to keypair file
-      if (!keypairExists(options.keypair)) {
-        if (options.json) {
-          exitWithError("KEYPAIR_NOT_FOUND", `Keypair not found at ${options.keypair}`, undefined, true);
-        }
-        spinner?.fail(`Keypair not found at ${options.keypair}`);
-        console.error(chalk.gray("Run `helius keygen` to generate a keypair, or use --private-key / HELIUS_PRIVATE_KEY."));
-        process.exit(ExitCode.KEYPAIR_NOT_FOUND);
-      }
-      keypair = await loadKeypair(options.keypair);
-    }
-
+    const keypair = await loadKeypair(options.keypair);
     const walletAddress = await getAddress(keypair);
     spinner?.succeed(`Wallet: ${chalk.cyan(walletAddress)}`);
 

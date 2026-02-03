@@ -28,7 +28,6 @@ program
   .command("signup")
   .description("Pay 1 USDC + create account + project")
   .option("-k, --keypair <path>", "Path to Solana keypair file", getDefaultKeypairPath())
-  .option("--private-key <base64>", "Base64-encoded private key (or set HELIUS_PRIVATE_KEY)")
   .option("--json", "Output in JSON format")
   .action(signupCommand);
 
@@ -36,7 +35,6 @@ program
   .command("login")
   .description("Authenticate with wallet")
   .option("-k, --keypair <path>", "Path to Solana keypair file", getDefaultKeypairPath())
-  .option("--private-key <base64>", "Base64-encoded private key (or set HELIUS_PRIVATE_KEY)")
   .option("--json", "Output in JSON format")
   .action(loginCommand);
 
