@@ -3,6 +3,7 @@ import ora from "ora";
 import { loadKeypair, signAuthMessage, getAddress } from "../lib/wallet.js";
 import { signup } from "../lib/api.js";
 import { setJwt } from "../lib/config.js";
+import { keypairExists } from "./keygen.js";
 
 interface LoginOptions {
   keypair: string;
@@ -12,6 +13,13 @@ export async function loginCommand(options: LoginOptions): Promise<void> {
   const spinner = ora();
 
   try {
+    // Check keypair exists
+    if (!keypairExists(options.keypair)) {
+      console.error(chalk.red(`Error: Keypair not found at ${options.keypair}`));
+      console.error(chalk.gray("Run `helius keygen` to generate a keypair first."));
+      process.exit(1);
+    }
+
     // Load keypair
     spinner.start("Loading keypair...");
     const keypair = await loadKeypair(options.keypair);

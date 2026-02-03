@@ -5,6 +5,7 @@ import { signup, createProject, listProjects } from "../lib/api.js";
 import { payUSDC, checkUsdcBalance } from "../lib/payment.js";
 import { setJwt } from "../lib/config.js";
 import { PAYMENT_AMOUNT } from "../constants.js";
+import { keypairExists } from "./keygen.js";
 
 interface SignupOptions {
   keypair: string;
@@ -14,6 +15,13 @@ export async function signupCommand(options: SignupOptions): Promise<void> {
   const spinner = ora();
 
   try {
+    // Check keypair exists
+    if (!keypairExists(options.keypair)) {
+      console.error(chalk.red(`Error: Keypair not found at ${options.keypair}`));
+      console.error(chalk.gray("Run `helius keygen` to generate a keypair first."));
+      process.exit(1);
+    }
+
     // 1. Load keypair
     spinner.start("Loading keypair...");
     const keypair = await loadKeypair(options.keypair);

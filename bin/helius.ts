@@ -7,6 +7,7 @@ import { projectCommand } from "../src/commands/project.js";
 import { apikeysCommand, createApiKeyCommand } from "../src/commands/apikeys.js";
 import { usageCommand } from "../src/commands/usage.js";
 import { rpcCommand } from "../src/commands/rpc.js";
+import { keygenCommand, getDefaultKeypairPath } from "../src/commands/keygen.js";
 
 const program = new Command();
 
@@ -16,15 +17,22 @@ program
   .version("1.0.0");
 
 program
+  .command("keygen")
+  .description("Generate a new Solana keypair")
+  .option("-o, --output <path>", "Output path for keypair", getDefaultKeypairPath())
+  .option("-f, --force", "Overwrite existing keypair")
+  .action(keygenCommand);
+
+program
   .command("signup")
   .description("Pay 1 USDC + create account + project")
-  .requiredOption("-k, --keypair <path>", "Path to Solana keypair file")
+  .option("-k, --keypair <path>", "Path to Solana keypair file", getDefaultKeypairPath())
   .action(signupCommand);
 
 program
   .command("login")
   .description("Authenticate with wallet")
-  .requiredOption("-k, --keypair <path>", "Path to Solana keypair file")
+  .option("-k, --keypair <path>", "Path to Solana keypair file", getDefaultKeypairPath())
   .action(loginCommand);
 
 program
