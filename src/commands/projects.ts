@@ -51,6 +51,11 @@ export async function projectsCommand(): Promise<void> {
     console.log(
       `\n${chalk.gray(`Total: ${projects.length} project(s)`)}`
     );
+
+    // Show helpful commands with first project ID
+    const firstProjectId = projects[0].id;
+    console.log(chalk.gray(`\nRun \`helius apikeys ${firstProjectId}\` to view API keys`));
+    console.log(chalk.gray(`Run \`helius rpc ${firstProjectId}\` to view RPC endpoints`));
   } catch (error) {
     spinner.fail(
       `Error: ${error instanceof Error ? error.message : String(error)}`
