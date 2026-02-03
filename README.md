@@ -1,149 +1,216 @@
 # Helius CLI
 
-Official command-line interface for [Helius](https://helius.dev) - the leading Solana RPC and API provider. Manage your Helius account, projects, API keys, and monitor usage directly from your terminal.
+Official command-line interface for [Helius](https://helius.dev) - the leading Solana RPC and API provider. **Designed for LLM agents and automation.**
+
+## Quick Start for Agents
+
+```bash
+# 1. Generate a keypair
+helius keygen
+
+# 2. Fund the wallet (shown in keygen output)
+#    - ~0.001 SOL for transaction fees
+#    - 1 USDC for signup
+
+# 3. Create account + project
+helius signup
+
+# 4. Get your API keys
+helius projects
+helius apikeys <project-id>
+```
 
 ## Installation
 
 ```bash
-# Install globally
-pnpm i -g helius
+# Install globally via npm
+npm install -g helius
 
-# Or run locally
-pnpm install
-pnpm run build
-```
-
-## Usage
-
-### Create Account (Signup)
-
-Pay 1 USDC to create a new Helius account and project:
-
-```bash
-helius signup -k ~/my-wallet.json
-helius signup --keypair ~/.config/solana/id.json
-```
-
-**Requirements:**
-- Wallet must have >= 1 USDC (mainnet)
-- Wallet must have some SOL for transaction fees (~0.01 SOL)
-
-### Login
-
-Authenticate with an existing account (no payment required):
-
-```bash
-helius login -k ~/my-wallet.json
-```
-
-### List Projects
-
-```bash
-helius projects
-```
-
-### Get Project Details
-
-```bash
-# If you have only one project, ID is optional
-helius project
-
-# With specific project ID
-helius project fda9d30b-a7e8-40fa-bde6-8a85be60f69a
-```
-
-### API Keys
-
-```bash
-# List API keys
-helius apikeys
-helius apikeys <project-id>
-
-# Create new API key
-helius apikeys create
-helius apikeys create <project-id>
-```
-
-### Credits Usage
-
-```bash
-helius usage
-helius usage <project-id>
-```
-
-### RPC Endpoints
-
-```bash
-helius rpc
-helius rpc <project-id>
+# Or with pnpm
+pnpm add -g helius
 ```
 
 ## Commands
 
 | Command | Description |
 |---------|-------------|
-| `helius signup -k <keypair>` | Pay 1 USDC + create account + project |
-| `helius login -k <keypair>` | Authenticate with wallet |
+| `helius keygen` | Generate a new Solana keypair |
+| `helius signup` | Pay 1 USDC + create account + project |
+| `helius login` | Authenticate with existing wallet |
 | `helius projects` | List all projects |
 | `helius project [id]` | Get project details |
-| `helius apikeys [project-id]` | List all API keys for project |
-| `helius apikeys create [project-id]` | Create new API key for project |
-| `helius usage [project-id]` | Show credits usage for project |
-| `helius rpc [project-id]` | Show RPC endpoints for project |
+| `helius apikeys [project-id]` | List API keys |
+| `helius apikeys create [project-id]` | Create new API key |
+| `helius usage [project-id]` | Show credits usage |
+| `helius rpc [project-id]` | Show RPC endpoints |
 
-`[project-id]` is optional - defaults to the only project if user has just one.
+## Keypair Management
+
+### Generate Keypair
+
+```bash
+helius keygen
+```
+
+Output:
+```
+✓ Keypair generated
+Path: /home/user/.helius-cli/keypair.json
+Address: 7xKp...3nQm
+
+To use this wallet, fund it with:
+  • ~0.001 SOL for transaction fees
+  • 1 USDC for Helius signup
+```
+
+### Default Keypair Path
+
+All commands use `~/.helius-cli/keypair.json` by default. Override with `-k`:
+
+```bash
+helius login -k /path/to/other/keypair.json
+```
+
+### Keypair Not Found
+
+If keypair doesn't exist, commands exit with clear instructions:
+
+```
+Error: Keypair not found at /home/user/.helius-cli/keypair.json
+Run `helius keygen` to generate a keypair first.
+```
 
 ## Signup Flow
 
-```
-1. Check USDC balance (>= 1 USDC)
-   └─> If insufficient, exit with error
+### Requirements
 
-2. Send 1 USDC to treasury wallet
-   └─> SPL Token transfer to CEs84tEowsXpH8u4VBf8rJSVgSRypFMfXw9CpGRtQgb6
+| Asset | Amount | Purpose |
+|-------|--------|---------|
+| SOL | ~0.001 | Transaction fees + rent |
+| USDC | 1.00 | Helius signup payment |
 
-3. Sign auth message (JSON format with timestamp)
-   └─> Ed25519 detached signature, base58 encoded
+### Process
 
-4. POST /wallet-signup → get JWT token
-   └─> No payment check here, just wallet ownership
-
-5. POST /projects/create → create project
-   └─> API checks on-chain if wallet paid 1 USDC to treasury
-   └─> Returns project with API keys and RPC endpoints
-
-6. Save JWT to ~/.helius-cli/config.json
+```bash
+helius signup
 ```
 
-## Configuration
+1. Checks SOL balance (min 0.001 SOL)
+2. Checks USDC balance (min 1 USDC)
+3. Sends 1 USDC payment to Helius treasury
+4. Creates account and project
+5. Returns project ID and API key
 
-The CLI stores authentication in `~/.helius-cli/config.json`:
+### Insufficient Balance Errors
 
+```
+✖ Insufficient SOL for transaction fees
+Have: 0.000000 SOL
+Need: ~0.001 SOL
+
+Send SOL to: 7xKp...3nQm
+```
+
+```
+✖ Insufficient USDC
+Have: 0.00 USDC
+Need: 1 USDC
+
+Send USDC to: 7xKp...3nQm
+```
+
+## JSON Output Mode
+
+Add `--json` flag for machine-readable output:
+
+```bash
+helius projects --json
+helius apikeys <project-id> --json
+helius rpc <project-id> --json
+```
+
+Example output:
 ```json
 {
-  "jwt": "eyJhbGciOiJIUzI1NiIs..."
+  "projects": [
+    {
+      "id": "67b9d260-726b-4ba3-8bb0-dbbf794641bf",
+      "name": "My Project",
+      "plan": "free"
+    }
+  ]
 }
 ```
 
-## Keypair Format
+## Exit Codes
 
-Uses Solana CLI keypair format (JSON array of 64 bytes). Generate with:
+| Code | Meaning |
+|------|---------|
+| 0 | Success |
+| 1 | General error |
+| 10 | Not logged in |
+| 11 | Keypair not found |
+| 20 | Insufficient SOL |
+| 21 | Insufficient USDC |
+| 30 | No projects found |
+| 31 | Project not found |
+| 40 | API error |
+
+## Configuration
+
+Config stored in `~/.helius-cli/`:
+
+```
+~/.helius-cli/
+├── config.json    # JWT authentication token
+└── keypair.json   # Solana keypair (if generated with keygen)
+```
+
+## Example: Full Agent Workflow
 
 ```bash
-solana-keygen new -o ~/my-wallet.json
+# Step 1: Check if keypair exists
+helius login
+# If "Keypair not found" error:
+
+# Step 2: Generate keypair
+helius keygen
+# Note the wallet address from output
+
+# Step 3: Fund wallet externally
+# Send 0.001 SOL + 1 USDC to the address
+
+# Step 4: Create account
+helius signup
+# Returns project ID
+
+# Step 5: Get API keys
+helius projects
+# Shows: Run `helius apikeys <project-id>` to view API keys
+
+helius apikeys 67b9d260-726b-4ba3-8bb0-dbbf794641bf
+# Returns API key
+
+# Step 6: Get RPC endpoints
+helius rpc 67b9d260-726b-4ba3-8bb0-dbbf794641bf
+# Returns mainnet and devnet RPC URLs
 ```
 
 ## Development
 
 ```bash
-# Install dependencies
+# Clone and install
+git clone https://github.com/helius-labs/helius-cli
+cd helius-cli
 pnpm install
 
-# Build
-pnpm run build
-
 # Run in development
-pnpm run dev -- signup -k ~/my-wallet.json
+pnpm dev keygen
+pnpm dev signup
+pnpm dev projects
+
+# Build
+pnpm build
 ```
 
 ## License
