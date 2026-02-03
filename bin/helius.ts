@@ -60,7 +60,10 @@ apikeysCmd
   .command("create [project-id]")
   .description("Create new API key for project")
   .option("--json", "Output in JSON format")
-  .action(createApiKeyCommand);
+  .action(function(projectId) {
+    // @ts-ignore - Commander passes options via this
+    createApiKeyCommand(projectId, { json: this.opts().json || process.argv.includes("--json") });
+  });
 
 // Default action for 'apikeys' (list)
 apikeysCmd.action(apikeysCommand);
